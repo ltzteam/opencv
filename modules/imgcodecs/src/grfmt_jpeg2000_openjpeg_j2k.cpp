@@ -7,7 +7,7 @@
 #include "precomp.hpp"
 
 #ifdef HAVE_OPENJPEG
-#include "grfmt_jpeg2000_openjpeg.hpp"
+#include "grfmt_jpeg2000_openjpeg_j2k.hpp"
 
 #include "opencv2/core/utils/logger.hpp"
 
@@ -436,7 +436,7 @@ bool decodeSYCCData(const opj_image_t& inImg, cv::Mat& outImg, uint8_t shift)
     return false;
 }
 
-OPJ_SIZE_T opjReadFromBuffer(void* dist, OPJ_SIZE_T count, detail::OpjMemoryBuffer* buffer)
+OPJ_SIZE_T opjReadFromBuffer(void* dist, OPJ_SIZE_T count, detail_j2k::OpjMemoryBuffer* buffer)
 {
     const OPJ_SIZE_T bytesToRead = std::min(buffer->availableBytes(), count);
     if (bytesToRead > 0)
@@ -451,7 +451,7 @@ OPJ_SIZE_T opjReadFromBuffer(void* dist, OPJ_SIZE_T count, detail::OpjMemoryBuff
     }
 }
 
-OPJ_SIZE_T opjSkipFromBuffer(OPJ_SIZE_T count, detail::OpjMemoryBuffer* buffer) {
+OPJ_SIZE_T opjSkipFromBuffer(OPJ_SIZE_T count, detail_j2k::OpjMemoryBuffer* buffer) {
     const OPJ_SIZE_T bytesToSkip = std::min(buffer->availableBytes(), count);
     if (bytesToSkip > 0)
     {
@@ -464,7 +464,7 @@ OPJ_SIZE_T opjSkipFromBuffer(OPJ_SIZE_T count, detail::OpjMemoryBuffer* buffer) 
     }
 }
 
-OPJ_BOOL opjSeekFromBuffer(OPJ_OFF_T count, detail::OpjMemoryBuffer* buffer)
+OPJ_BOOL opjSeekFromBuffer(OPJ_OFF_T count, detail_j2k::OpjMemoryBuffer* buffer)
 {
     // Count should stay positive to prevent unsigned overflow
     CV_DbgAssert(count > 0);
@@ -476,9 +476,9 @@ OPJ_BOOL opjSeekFromBuffer(OPJ_OFF_T count, detail::OpjMemoryBuffer* buffer)
     return OPJ_TRUE;
 }
 
-detail::StreamPtr opjCreateBufferInputStream(detail::OpjMemoryBuffer* buf)
+detail_j2k::StreamPtr opjCreateBufferInputStream(detail_j2k::OpjMemoryBuffer* buf)
 {
-    detail::StreamPtr stream{ opj_stream_default_create(/* isInput */ true) };
+    detail_j2k::StreamPtr stream{ opj_stream_default_create(/* isInput */ true) };
     if (stream)
     {
         opj_stream_set_user_data(stream.get(), static_cast<void*>(buf), nullptr);
@@ -493,25 +493,25 @@ detail::StreamPtr opjCreateBufferInputStream(detail::OpjMemoryBuffer* buf)
 
 } // namespace <anonymous>
 
-/////////////////////// Jpeg2KOpjDecoder ///////////////////
+/////////////////////// JpegJ2KOpjDecoder ///////////////////
 
-Jpeg2KOpjDecoder::Jpeg2KOpjDecoder()
+JpegJ2KOpjDecoder::JpegJ2KOpjDecoder()
 {
-    static const unsigned char signature[] = { 0, 0, 0, 0x0c, 'j', 'P', ' ', ' ', 13, 10, 0x87, 10 };
+    static const unsigned char signature[] = {0xff, 0x4f, 0xff, 0x51}; // modify by tanjun: reference from opj_decompress.cpp.
     m_signature = String((const char*)(signature), sizeof(signature));
     m_buf_supported = true;
 }
 
 
-ImageDecoder Jpeg2KOpjDecoder::newDecoder() const
+ImageDecoder JpegJ2KOpjDecoder::newDecoder() const
 {
-    return makePtr<Jpeg2KOpjDecoder>();
+    return makePtr<JpegJ2KOpjDecoder>();
 }
 
-bool Jpeg2KOpjDecoder::readHeader()
+bool JpegJ2KOpjDecoder::readHeader()
 {
     if (!m_buf.empty()) {
-        opjBuf_ = detail::OpjMemoryBuffer(m_buf);
+        opjBuf_ = detail_j2k::OpjMemoryBuffer(m_buf);
         stream_ = opjCreateBufferInputStream(&opjBuf_);
     }
     else
@@ -521,7 +521,7 @@ bool Jpeg2KOpjDecoder::readHeader()
     if (!stream_)
         return false;
 
-    codec_.reset(opj_create_decompress(OPJ_CODEC_JP2));
+    codec_.reset(opj_create_decompress(OPJ_CODEC_J2K));
     if (!codec_)
         return false;
 
@@ -587,7 +587,7 @@ bool Jpeg2KOpjDecoder::readHeader()
     return true;
 }
 
-bool Jpeg2KOpjDecoder::readData( Mat& img )
+bool JpegJ2KOpjDecoder::readData( Mat& img )
 {
     using DecodeFunc = bool(*)(const opj_image_t&, cv::Mat&, uint8_t shift);
 
@@ -618,7 +618,7 @@ bool Jpeg2KOpjDecoder::readData( Mat& img )
         decode = decodeSYCCData;
         break;
     case OPJ_CLRSPC_UNSPECIFIED:
-        CV_Error(Error::StsNotImplemented, "OpenJPEG2000: Image has unspecified color space");
+        CV_Error(Error::StsNotImplemented, cv::format("OpenJPEG2000: Image has unspecified color space. %s", image_->icc_profile_buf));
     default:
         CV_Error(Error::StsNotImplemented,
                  cv::format("OpenJPEG2000: Unsupported color space conversion: %s -> %s",
@@ -655,24 +655,24 @@ bool Jpeg2KOpjDecoder::readData( Mat& img )
 }
 
 
-/////////////////////// Jpeg2KOpjEncoder ///////////////////
+/////////////////////// JpegJ2KOpjEncoder ///////////////////
 
-Jpeg2KOpjEncoder::Jpeg2KOpjEncoder()
+JpegJ2KOpjEncoder::JpegJ2KOpjEncoder()
 {
     m_description = "JPEG-2000 files (*.jp2)";
 }
 
-ImageEncoder Jpeg2KOpjEncoder::newEncoder() const
+ImageEncoder JpegJ2KOpjEncoder::newEncoder() const
 {
-    return makePtr<Jpeg2KOpjEncoder>();
+    return makePtr<JpegJ2KOpjEncoder>();
 }
 
-bool Jpeg2KOpjEncoder::isFormatSupported(int depth) const
+bool JpegJ2KOpjEncoder::isFormatSupported(int depth) const
 {
     return depth == CV_8U || depth == CV_16U;
 }
 
-bool Jpeg2KOpjEncoder::write(const Mat& img, const std::vector<int>& params)
+bool JpegJ2KOpjEncoder::write(const Mat& img, const std::vector<int>& params)
 {
     CV_Assert(params.size() % 2 == 0);
 
@@ -707,7 +707,7 @@ bool Jpeg2KOpjEncoder::write(const Mat& img, const std::vector<int>& params)
 
 
     auto colorspace = (channels > 2) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY;
-    detail::ImagePtr image(opj_image_create(channels, compparams.data(), colorspace));
+    detail_j2k::ImagePtr image(opj_image_create(channels, compparams.data(), colorspace));
     if (!image)
     {
         CV_Error(Error::StsNotImplemented, "OpenJPEG2000: can not create image");
@@ -747,7 +747,7 @@ bool Jpeg2KOpjEncoder::write(const Mat& img, const std::vector<int>& params)
     // The container is not needed after data was copied
     copyFromMat(img, std::move(outcomps));
 
-    detail::CodecPtr codec(opj_create_compress(OPJ_CODEC_JP2));
+    detail_j2k::CodecPtr codec(opj_create_compress(OPJ_CODEC_J2K));
     if (!codec) {
         CV_Error(Error::StsNotImplemented, "OpenJPEG2000: can not create compression codec");
     }
@@ -759,7 +759,7 @@ bool Jpeg2KOpjEncoder::write(const Mat& img, const std::vector<int>& params)
         CV_Error(Error::StsNotImplemented, "OpenJPEG2000: Can not setup encoder");
     }
 
-    detail::StreamPtr stream(opj_stream_create_default_file_stream(m_filename.c_str(), OPJ_STREAM_WRITE));
+    detail_j2k::StreamPtr stream(opj_stream_create_default_file_stream(m_filename.c_str(), OPJ_STREAM_WRITE));
     if (!stream)
     {
         CV_Error(Error::StsNotImplemented, "OpenJPEG2000: Can not create stream");

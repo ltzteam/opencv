@@ -11025,6 +11025,21 @@ OPJ_BOOL opj_j2k_decode(opj_j2k_t * p_j2k,
         return OPJ_FALSE;
     }
 
+    /* Set Image Color Space */
+    if (p_j2k->enumcs == 16) {
+        p_image->color_space = OPJ_CLRSPC_SRGB;
+    } else if (p_j2k->enumcs == 17) {
+        p_image->color_space = OPJ_CLRSPC_GRAY;
+    } else if (p_j2k->enumcs == 18) {
+        p_image->color_space = OPJ_CLRSPC_SYCC;
+    } else if (p_j2k->enumcs == 24) {
+        p_image->color_space = OPJ_CLRSPC_EYCC;
+    } else if (p_j2k->enumcs == 12) {
+        p_image->color_space = OPJ_CLRSPC_CMYK;
+    } else {
+        p_image->color_space = OPJ_CLRSPC_SRGB; // modify by tanjun: OPJ_CLRSPC_UNKNOWN -> OPJ_CLRSPC_SRGB
+    }
+
     /* Decode the codestream */
     if (! opj_j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream, p_manager)) {
         opj_image_destroy(p_j2k->m_private_image);

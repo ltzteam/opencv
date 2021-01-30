@@ -4,8 +4,8 @@
 //
 // Copyright (C) 2020, Stefan Brüns <stefan.bruens@rwth-aachen.de>
 
-#ifndef _GRFMT_OPENJPEG_H_
-#define _GRFMT_OPENJPEG_H_
+#ifndef _GRFMT_OPENJPEG_J2K_H_
+#define _GRFMT_OPENJPEG_J2K_H_
 
 #ifdef HAVE_OPENJPEG
 
@@ -13,7 +13,7 @@
 #include <openjpeg.h>
 
 namespace cv {
-namespace detail {
+namespace detail_j2k {
 struct OpjStreamDeleter
 {
     void operator()(opj_stream_t* stream) const
@@ -55,37 +55,37 @@ struct OpjMemoryBuffer {
     }
 };
 
-using StreamPtr = std::unique_ptr<opj_stream_t, detail::OpjStreamDeleter>;
-using CodecPtr = std::unique_ptr<opj_codec_t, detail::OpjCodecDeleter>;
-using ImagePtr = std::unique_ptr<opj_image_t, detail::OpjImageDeleter>;
+using StreamPtr = std::unique_ptr<opj_stream_t, detail_j2k::OpjStreamDeleter>;
+using CodecPtr = std::unique_ptr<opj_codec_t, detail_j2k::OpjCodecDeleter>;
+using ImagePtr = std::unique_ptr<opj_image_t, detail_j2k::OpjImageDeleter>;
 
-} // namespace detail
+} // namespace detail_j2k
 
-class Jpeg2KOpjDecoder CV_FINAL : public BaseImageDecoder
+class JpegJ2KOpjDecoder CV_FINAL : public BaseImageDecoder
 {
 public:
-    Jpeg2KOpjDecoder();
-     ~Jpeg2KOpjDecoder() CV_OVERRIDE = default;
+    JpegJ2KOpjDecoder();
+     ~JpegJ2KOpjDecoder() CV_OVERRIDE = default;
 
     ImageDecoder newDecoder() const CV_OVERRIDE;
     bool readData( Mat& img ) CV_OVERRIDE;
     bool readHeader() CV_OVERRIDE;
 
 private:
-    detail::StreamPtr stream_{nullptr};
-    detail::CodecPtr codec_{nullptr};
-    detail::ImagePtr image_{nullptr};
+    detail_j2k::StreamPtr stream_{nullptr};
+    detail_j2k::CodecPtr codec_{nullptr};
+    detail_j2k::ImagePtr image_{nullptr};
 
-    detail::OpjMemoryBuffer opjBuf_;
+    detail_j2k::OpjMemoryBuffer opjBuf_;
 
     OPJ_UINT32 m_maxPrec = 0;
 };
 
-class Jpeg2KOpjEncoder CV_FINAL : public BaseImageEncoder
+class JpegJ2KOpjEncoder CV_FINAL : public BaseImageEncoder
 {
 public:
-    Jpeg2KOpjEncoder();
-    ~Jpeg2KOpjEncoder() CV_OVERRIDE = default;
+    JpegJ2KOpjEncoder();
+    ~JpegJ2KOpjEncoder() CV_OVERRIDE = default;
 
     bool isFormatSupported( int depth ) const CV_OVERRIDE;
     bool write( const Mat& img, const std::vector<int>& params ) CV_OVERRIDE;
@@ -96,4 +96,4 @@ public:
 
 #endif
 
-#endif/*_GRFMT_OPENJPEG_H_*/
+#endif/*_GRFMT_OPENJPEG_J2K_H_*/

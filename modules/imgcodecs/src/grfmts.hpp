@@ -51,7 +51,7 @@
 #include "grfmt_png.hpp"
 #include "grfmt_jpeg2000.hpp"
 #include "grfmt_jpeg2000_openjpeg.hpp"
-#include "grfmt_jpeg2000_openjpeg_j2k.hpp"
+// #include "grfmt_jpeg2000_openjpeg_j2k.hpp"
 #include "grfmt_exr.hpp"
 #include "grfmt_webp.hpp"
 #include "grfmt_hdr.hpp"

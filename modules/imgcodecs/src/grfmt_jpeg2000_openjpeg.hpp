@@ -14,39 +14,16 @@
 
 namespace cv {
 namespace detail {
-struct OpjStreamDeleter
-{
-    void operator()(opj_stream_t* stream) const
-    {
-        opj_stream_destroy(stream);
-    }
-};
-
-struct OpjCodecDeleter
-{
-    void operator()(opj_codec_t* codec) const
-    {
-        opj_destroy_codec(codec);
-    }
-};
-
-struct OpjImageDeleter
-{
-    void operator()(opj_image_t* image) const
-    {
-        opj_image_destroy(image);
-    }
-};
-
 struct OpjMemoryBuffer {
-    OPJ_BYTE* pos{nullptr};
-    OPJ_BYTE* begin{nullptr};
-    OPJ_SIZE_T length{0};
+    OPJ_BYTE* pos;
+    OPJ_BYTE* begin;
+    OPJ_SIZE_T length;
 
-    OpjMemoryBuffer() = default;
+    OpjMemoryBuffer():pos(NULL), begin(NULL), length(0)
+    {
+    }
 
-    explicit OpjMemoryBuffer(cv::Mat& mat)
-        : pos{ mat.ptr() }, begin{ mat.ptr() }, length{ mat.rows * mat.cols * mat.elemSize() }
+    explicit OpjMemoryBuffer(cv::Mat& mat) : pos(mat.ptr()), begin(mat.ptr()), length(mat.rows * mat.cols * mat.elemSize())
     {
     }
 
@@ -54,38 +31,36 @@ struct OpjMemoryBuffer {
         return begin + length - pos;
     }
 };
-
-using StreamPtr = std::unique_ptr<opj_stream_t, detail::OpjStreamDeleter>;
-using CodecPtr = std::unique_ptr<opj_codec_t, detail::OpjCodecDeleter>;
-using ImagePtr = std::unique_ptr<opj_image_t, detail::OpjImageDeleter>;
-
+    typedef cv::Ptr<opj_stream_t> StreamPtr;
+    typedef cv::Ptr<opj_codec_t> CodecPtr;
+    typedef cv::Ptr<opj_image_t> ImagePtr;
 } // namespace detail
 
 class Jpeg2KOpjDecoder CV_FINAL : public BaseImageDecoder
 {
 public:
     Jpeg2KOpjDecoder();
-     ~Jpeg2KOpjDecoder() CV_OVERRIDE = default;
+     ~Jpeg2KOpjDecoder() CV_OVERRIDE{};
 
     ImageDecoder newDecoder() const CV_OVERRIDE;
     bool readData( Mat& img ) CV_OVERRIDE;
     bool readHeader() CV_OVERRIDE;
 
 private:
-    detail::StreamPtr stream_{nullptr};
-    detail::CodecPtr codec_{nullptr};
-    detail::ImagePtr image_{nullptr};
+    detail::StreamPtr stream_;
+    detail::CodecPtr codec_;
+    detail::ImagePtr image_;
 
     detail::OpjMemoryBuffer opjBuf_;
 
-    OPJ_UINT32 m_maxPrec = 0;
+    OPJ_UINT32 m_maxPrec;
 };
 
 class Jpeg2KOpjEncoder CV_FINAL : public BaseImageEncoder
 {
 public:
     Jpeg2KOpjEncoder();
-    ~Jpeg2KOpjEncoder() CV_OVERRIDE = default;
+    ~Jpeg2KOpjEncoder() CV_OVERRIDE{};
 
     bool isFormatSupported( int depth ) const CV_OVERRIDE;
     bool write( const Mat& img, const std::vector<int>& params ) CV_OVERRIDE;
